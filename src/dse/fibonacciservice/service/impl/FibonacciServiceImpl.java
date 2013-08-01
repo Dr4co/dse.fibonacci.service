@@ -1,28 +1,22 @@
 package dse.fibonacciservice.service.impl;
 
-import java.util.ArrayList;
-
-import dse.fibonacciservice.service.FibonacciService;
+import api.FibonacciService;
 
 public class FibonacciServiceImpl implements FibonacciService {
-	    public String getFibonacci() {
-	        System.out.println("Inside FibonacciServiceImple.getFibonacci()");
-	        
-	        System.out.println(FibonacciServiceActivator.fibonacciSequence);
-	        return "Say Fibonacci";
-	    }
-
 		@Override
 		public long getNextFib() {
 
 			if(!FibonacciServiceActivator.fibonacciSequence.isEmpty()){
-				FibonacciServiceActivator.lastFib = FibonacciServiceActivator.fibonacciSequence.get(0);
-				long temp = FibonacciServiceActivator.fibonacciSequence.get(0); 
+				long tempFib = FibonacciServiceActivator.fibonacciSequence.get(0);
 				FibonacciServiceActivator.fibonacciSequence.remove(0);
-				return temp;
+				
+				if(FibonacciServiceActivator.fibonacciSequence.isEmpty()){
+					FibonacciServiceActivator.calculateNextFibs();	
+				}
+				return tempFib;
 			}
 			else{
-				return -1;
-			}			
+				return Long.MIN_VALUE;
+			}		
 		}
 }
