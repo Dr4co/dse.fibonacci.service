@@ -57,3 +57,8 @@ ett lämligt värde. Standardvärdet är satt till fyra.<br>
 <br>
 De två sista beräknade fibonacci talen lagras i ett "File" objekt med namn:
 "fibsequence.dat".
+
+<h5>Upptäckta buggar</h5>
+<i>Ev. installations problem med bundles</i><br>
+Har själv kört koden i Eclipse och det fungerar, det går att exportera bundles och<br>
+installera dom. Men får tyvärr felmeddelanden.<br>
