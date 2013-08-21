@@ -35,12 +35,12 @@ public class FibonacciServiceActivator implements BundleActivator {
 		fibonacciServiceRegistration =context.registerService(FibonacciService.class.getName(), fibonacciService, null);
 		bc = context;
 
-		// write/read from mydatafile
+		// Read/write from mydatafile
 		/* Downside:
 		 * The data is deleted when starting the application with the -clean option.
 		 * This often happens during debugging.
-		 * The data is not accessible when the plugin is updated/replaced.
-		 * Different versions of the same plugin get different plugin IDs,
+		 * The data is not accessible when the plug-in is updated/replaced.
+		 * Different versions of the same plug-in get different plug-in IDs,
 		 * and the data folder is bound to the ID.
 		 */
 		File fibsequence = context.getDataFile(fileName);
@@ -64,26 +64,13 @@ public class FibonacciServiceActivator implements BundleActivator {
 					// On resume state				
 					System.out.println("Server: Resume state");        	
 
-					// If the configuration property isn't set, choose the default sequence size (4).
-					if(context.getProperty("dse.fibonacci.service.fibsize") != null){
-						sequenceSize = Integer.valueOf(context.getProperty("dse.fibonacci.service.fibsize"));        	
-					}
-					else{
-						sequenceSize = defaultSequenceSize;
-					}
+					getSequenceProperty(context);
 
 					secondLastFib = -1;
 					lastFib = -1;
-					for(int i=0; i < sequenceSize; ++i){
-						// Only the last two numbers are of interest
-						if(i == sequenceSize-2){
-							secondLastFib = Long.valueOf(line);
-						}
-						else if(i == sequenceSize-1){
-							lastFib = Long.valueOf(line);
-						}
-						line = reader.readLine();
-					}
+					
+					// Read the persistence data file and retrieve the last two Fibonacci numbers.					
+					retrieveLastTwoFibs(reader, line);
 
 					writer = new BufferedWriter(new FileWriter(fibsequence));
 					for(int i=0; i < sequenceSize; ++i){
@@ -96,7 +83,7 @@ public class FibonacciServiceActivator implements BundleActivator {
 						writer.write(String.valueOf(secondLastFib+lastFib));
 						writer.newLine();
 
-						// Update the next fibonacci number
+						// Update the next Fibonacci number
 						long temp = secondLastFib+lastFib;
 						secondLastFib = lastFib;
 						lastFib = temp;
@@ -115,23 +102,21 @@ public class FibonacciServiceActivator implements BundleActivator {
 				// No previous persistent data found
 			}
 
+			/**
+			 *  Persistence data file (fibsequence.dat) not found.
+			 *  
+			 */			
 			if(firstRun){
 				// On first run
 				System.out.println("Server: First run");
 
 				// If the configuration property isn't set, choose the default sequence size (4).
-				if(context.getProperty("dse.fibonacci.service.fibsize") != null){
-					sequenceSize = Integer.valueOf(context.getProperty("dse.fibonacci.service.fibsize"));        	
-				}
-				else{
-					sequenceSize = defaultSequenceSize;
-				}
+				getSequenceProperty(context);
 
-				// Create the first (sequenceSize) fibonacci sequence numbers and
+				// Create the first (sequenceSize) Fibonacci sequence numbers and
 				// add them to the ArrayList and the persistence storage.
 				writer = new BufferedWriter(new FileWriter(fibsequence));
 				setFibonacciSequence(new ArrayList<Long>());	// Initialize ArrayList
-
 
 				for(int i=0; i < sequenceSize; ++i){
 					/* Formula:
@@ -165,6 +150,50 @@ public class FibonacciServiceActivator implements BundleActivator {
 		
 	}
 
+	private static void retrieveLastTwoFibs(BufferedReader reader, String line)
+			throws IOException {
+		// We need to fetch at least two numbers from the persistence data
+		int evenOdd = 0;
+		while(line != null){
+			
+			if(evenOdd % 2 == 0){
+				secondLastFib = Long.valueOf(line);							
+			}
+			else{
+				lastFib = Long.valueOf(line);
+			}
+
+			++evenOdd;
+			line = reader.readLine();
+		}
+
+		// Assure that lastFib and secondLastFib is in the correct order...
+		// As odd Fibonacci sequenceSize, requires a swap!
+		long tempSwap = -1;
+		if(secondLastFib > lastFib){
+			tempSwap = lastFib;
+			lastFib = secondLastFib;
+			secondLastFib = tempSwap;
+		}
+		// Otherwise do nothing!
+	}
+
+	/**
+	 * Retrieve the OSGi configuration property, if such property isn't already set,
+	 * set the sequenceSize to the default sequence size (4).
+	 *  
+	 * @param context
+	 */
+	private static void getSequenceProperty(BundleContext context) {
+		// If the configuration property isn't set, choose the default sequence size (4).
+		if(context.getProperty("dse.fibonacci.service.fibsize") != null){
+			sequenceSize = Integer.valueOf(context.getProperty("dse.fibonacci.service.fibsize"));        	
+		}
+		else{
+			sequenceSize = defaultSequenceSize;
+		}
+	}
+
 	public void stop(BundleContext context) throws Exception {
 		System.out.println("Server: Stopped");    
 		bc = null;
@@ -173,9 +202,10 @@ public class FibonacciServiceActivator implements BundleActivator {
 	}
 
 	/**
-	 * When a Client have requested (sequenceSize) number of fibonacci
+	 * When a Client have requested (sequenceSize) number of Fibonacci
 	 * numbers. This method will be called to calculate the next
-	 * sequence of numbers.
+	 * sequence of Fibonacci numbers.
+	 * 
 	 * @throws IOException 
 	 */
 	public static void calculateNextFibs() throws IOException {
@@ -189,36 +219,26 @@ public class FibonacciServiceActivator implements BundleActivator {
 
 			String line = reader.readLine();
 			if(line != null){
-				// If the configuration property isn't set, choose the default sequence size (4).
-				if(bc.getProperty("dse.fibonacci.service.fibsize") != null){
-					sequenceSize = Integer.valueOf(bc.getProperty("dse.fibonacci.service.fibsize"));        	
-				}
-				else{
-					sequenceSize = defaultSequenceSize;
-				}
 
+				// If the configuration property isn't set, choose the default sequence size (4).
+				getSequenceProperty(bc);
+				
 				secondLastFib = -1;
 				lastFib = -1;
 				boolean maximumFib = false;
-				for(int i=0; i < sequenceSize; ++i){
-					// Only the last two numbers are of interest
-					if(i == sequenceSize-2){
-						secondLastFib = Long.valueOf(line);
-					}
-					else if(i == sequenceSize-1){
-						lastFib = Long.valueOf(line);
-					}
-					line = reader.readLine();
-					
-					if((lastFib < -1) || (secondLastFib < -1) ){
-						maximumFib = true;
-						break;
-					}
+				
+				retrieveLastTwoFibs(reader, line);
+				
+				if((lastFib < -1) || (secondLastFib < -1) ){
+					maximumFib = true;
 				}
+			
 //				System.out.println("SecondLastFib: " + secondLastFib);				
 //				System.out.println("LastFib: " + lastFib);
 				
-				// We have reached the maximum Long value number 93 in the fibonacci sequence,
+				
+				
+				// We have reached the maximum Long value number 93 in the Fibonacci sequence,
 				// restart again...
 				if(maximumFib){
 					writer = new BufferedWriter(new FileWriter(fibsequence));
@@ -239,15 +259,16 @@ public class FibonacciServiceActivator implements BundleActivator {
 							writer.newLine();
 						}
 						else{
+							// Unnecessary to do a Long.MAX_VALUE check, as these are the first
+							// Fibonacci sequence.
 							getFibonacciSequence().add(getFibonacciSequence().get(i-2)+getFibonacciSequence().get(i-1));
 							writer.write(String.valueOf((long) getFibonacciSequence().get(i-2)+getFibonacciSequence().get(i-1)));
 							writer.newLine();						
 						}
 					}
-					writer.flush();
-					writer.close();	
+
 				}
-				// Otherwise continue to calculate fibonacci numbers.
+				// Otherwise continue to calculate Fibonacci numbers.
 				else{
 					writer = new BufferedWriter(new FileWriter(fibsequence));
 					for(int i=0; i < sequenceSize; ++i){
@@ -256,28 +277,43 @@ public class FibonacciServiceActivator implements BundleActivator {
 						 * f(1) = 1;
 						 * f(n) = f(n-1)+f(n-2)
 						 */
-						
-						getFibonacciSequence().add(secondLastFib+lastFib);
-						writer.write(String.valueOf(secondLastFib+lastFib));
-						writer.newLine();
 
-						// Update the next fibonacci number
-						long temp = secondLastFib+lastFib;
-						
 						// We have reached the maximum long value.
-						// Restart sequence.
-						if(temp < -1){
-							secondLastFib = 0;
-							lastFib = 1;
-						}else{
-							secondLastFib = lastFib;
-							lastFib = temp;	
-						}							
-					}
+						// Restart sequence.				
 
-					writer.flush();
-					writer.close();
+						// Update the next Fibonacci number
+						long temp = secondLastFib+lastFib;
+
+						if(secondLastFib+lastFib < 0){
+							secondLastFib = lastFib;
+							lastFib = 0;
+							
+							getFibonacciSequence().add(lastFib);
+							writer.write(String.valueOf(lastFib));
+							writer.newLine();
+						}
+						else if(lastFib == 0){
+							secondLastFib = lastFib;
+							lastFib = 1;
+							
+							getFibonacciSequence().add(lastFib);
+							writer.write(String.valueOf(lastFib));
+							writer.newLine();							
+						}
+						else{
+							getFibonacciSequence().add(secondLastFib+lastFib);
+							writer.write(String.valueOf(secondLastFib+lastFib));
+							writer.newLine();
+							
+							secondLastFib = lastFib;
+							lastFib = temp;
+						}						
+					}
 				}
+				
+				// Flush and Close BufferedWriter  
+				writer.flush();
+				writer.close();	
 			}
 
 		}
@@ -286,7 +322,6 @@ public class FibonacciServiceActivator implements BundleActivator {
 			// No previous persistent data found
 			// This case should not occur... unless the persistence file is manually deleted.
 		}
-		
 	}
 	
 	
@@ -310,7 +345,7 @@ public class FibonacciServiceActivator implements BundleActivator {
 }
 
 /**
- * This thread calculates the next series of fibonacci numbers.
+ * This thread calculates the next series of Fibonacci numbers.
  * 
  * When the maximum long value is reached a negative number is returned.
  * To fix this problem, future improvements should implement the BigInteger data type.
